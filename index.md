@@ -45,20 +45,8 @@ It has been extended to cover new tools like [NanoGEN](https://twiki.cern.ch/twi
 >     <td align="center"><a href="https://github.com/enibigir"><img src="https://lpc.fnal.gov//CMSDAS2025/Emery_Nibigira.png" width="100px;" alt=""/><br /><sub><b>Emery Nibigira</b></sub></a><br /><a href="https://lpc.fnal.gov/fellows/2025/Emery_Nibigira.shtml" title="More about Emery">🖋</a></td>
 >     <td align="center"><a href="https://github.com/smrenna"><img src="https://lpc.fnal.gov//CMSDAS2024/Steve_Mrenna.png" width="100px;" alt=""/><br /><sub><b>Steve Mrenna</b></sub></a><br /><a href="https://cms.fnal.gov/stephen-mrenna/" title="More about Steve">🖋</a></td>
 >     <td align="center"><a href=""><img src="https://lpc.fnal.gov//CMSDAS2025/Roy_Cruz.png" width="100px;" alt=""/><br /><sub><b>Roy Cruz</b></sub></a><br /><a href="" title="More about Roy">🖋</a></td>
->     <td align="center"><a href=""><img src="https://lpc.fnal.gov//CMSDAS2025/Johnny_Lawless.png" width="100px;" alt=""/><br /><sub><b>Johnny Lawless</b></sub></a><br /><a href="" title="More about Johnny">🖋</a></td>
-
-Georgios Krintiras
-
-<!-- >     <td align="center"><a href="https://github.com/akgrummer"><img src="https://lpc.fnal.gov//CMSDAS2024/Aidan_Grummer.jpg" width="100px;" alt=""/><br /><sub><b>Aidan Grummer</b></sub></a><br /><a href="https://github.com/akgrummer" title="More about him">🖋</a></td>
->     <td align="center"><a href="https://github.com/"><img src="https://lpc.fnal.gov//CMSDAS2024/Keith_Ulmer.jpg" width="100px;" alt=""/><br /><sub><b>Keith Ulmer</b></sub></a><br /><a href="https://github.com/" title="More about him">🖋</a></td>
->     <td align="center"><a href="https://github.com/"><img src="https://lpc.fnal.gov//CMSDAS2024/Kai_Yi.jpg" width="100px;" alt=""/><br /><sub><b>Kai Yi</b></sub></a><br /><a href="https://github.com/" title="More about him">🖋</a></td>
->   </tr>
->   <tr>
->     <td align="center"><a href="https://github.com/"><img src="https://lpc.fnal.gov//CMSDAS2024/Irene_Zoi.jpg" width="100px;" alt=""/><br /><sub><b>Irene Zoi</b></sub></a><br /><a href="https://github.com/" title="More about him">🖋</a></td>
->     <td align="center"><a href="https://github.com/"><img src="https://lpc.fnal.gov//CMSDAS2024/Sam_Bein.jpg" width="100px;" alt=""/><br /><sub><b>Sam Bein</b></sub></a><br /><a href="https://github.com/" title="More about him">🖋</a></td>
->     <td align="center"><a href="https://github.com/"><img src="https://lpc.fnal.gov//CMSDAS2024/Brunella_D_Anzi.jpg" width="100px;" alt=""/><br /><sub><b>Brunella D'Anzi</b></sub></a><br /><a href="https://github.com/" title="More about him">🖋</a></td>
->     <td align="center"><a href="https://github.com/"><img src="https://lpc.fnal.gov//CMSDAS2024/Nicola_De_Filippis.png" width="100px;" alt=""/><br /><sub><b>Nicola De Filippis</b></sub></a><br /><a href="https://github.com/" title="More about him">🖋</a></td>
->     <td align="center"><a href="https://github.com/"><img src="https://lpc.fnal.gov//CMSDAS2024/Ulascan_Sarica.jpg" width="100px;" alt=""/><br /><sub><b>Ulascan Sarica</b></sub></a><br /><a href="https://github.com/" title="More about him">🖋</a></td> -->
+>     <td align="center"><a href=""><img src="https://lpc.fnal.gov//CMSDAS2025/John_Lawless.png" width="100px;" alt=""/><br /><sub><b>Johnny Lawless</b></sub></a><br /><a href="" title="More about Johnny">🖋</a></td>
+>     <td align="center"><a href=""><img src="https://lpc.fnal.gov//CMSDAS2025/Georgios_Krintiras.png" width="100px;" alt=""/><br /><sub><b>Georgios Krintiras</b></sub></a><br /><a href="" title="More about Georgios">🖋</a></td>
 >   </tr>
 > </table>
 {: .testimonial}
