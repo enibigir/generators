@@ -47,47 +47,51 @@ Run `bash -l` to restart bash, or alternatively `source ~/.bash_profile` to acti
 
 ## Downloading MadGraph
 
-Downloading MadGraph5 v2.6.5 from a CMS mirror, which is the MG version that is currently used in CMS for Run 2 Ultra Legacy and Run 3 samples.
+Downloading MadGraph5 v3.5.2 from a CMS mirror.
 ~~~bash
 cd ~/nobackup/cmsdas_2025_gen
-wget https://cms-project-generators.web.cern.ch/cms-project-generators/MG5_aMC_v2.6.5.tar.gz
-tar xf MG5_aMC_v2.6.5.tar.gz
-rm MG5_aMC_v2.6.5.tar.gz
+wget https://cms-project-generators.web.cern.ch/cms-project-generators/MG5_aMC_v3.5.2.tar.gz
+tar xf MG5_aMC_v3.5.2.tar.gz
+rm MG5_aMC_v3.5.2.tar.gz
 ~~~
 {: .source}
 
-## Testing MadGraph
-~~~bash
-cd MG5_aMC_v2_6_5
-./bin/mg5_aMC
-~~~
-{: .source}
+## Running MadGraph
+Please note that MG5_aMC_v3.5.2 requires Python 3.7 or higher. We will set up MadGraph with making virtual environments for Python 3.11 (available on the LPC clusters):
+- Set up a Python 3 virtual environment
+  ~~~bash
+  python3.11 -m venv mg352
+  ~~~
+  {: .source}
+- Activate the the Python 3 virtual environment and install `six` package
+  ~~~bash
+  source mg352/bin/activate
+  python -m pip install six
+  ~~~
+  {: .source}
+- Run MadGraph
+  ~~~bash
+  cd MG5_aMC_v3_5_2
+  ./bin/mg5_aMC
+  ~~~
+  {: .source}
 
-If you get this kind of error
-~~~
-/usr/bin/env: ‘python’: No such file or directory
-~~~
-{: .output}
-It means you do not have python available in the $PATH environment variable then you need to run madgraph like this:
-~~~bash
-/usr/bin/python2 ./bin/mg5_aMC
-~~~
-{: .source}
+To quit the MadGraph interface use `exit` command.
 
-To quit the MG5 aMC interface use `exit` command.
+Note: To deactivate the Python 3 virtual environment, type `deactivate`.
 
 ## Downloading CMS generator tool
 
 Cloning the CMS generator repository:
 ~~~bash
 cd ~/nobackup/cmsdas_2025_gen
-git clone -b mg265UL https://github.com/cms-sw/genproductions.git genproductions_mg265
+git clone -b mg352 https://github.com/cms-sw/genproductions.git genproductions_mg352
 ~~~
 {: .source}
 
 You can check that the MadGraph steering cards of the example we will be using are actually there:
 ~~~bash
-ls -rtl genproductions_mg265/bin/MadGraph5_aMCatNLO/cards/examples/wplustest_4f_LO/
+ls -rtl genproductions_mg352/bin/MadGraph5_aMCatNLO/cards/examples/wplustest_4f_LO/
 ~~~
 {: .source}
 
@@ -100,11 +104,11 @@ total 20
 
 Let’s copy the two files
 ~~~bash
-cp genproductions_mg265/bin/MadGraph5_aMCatNLO/cards/examples/wplustest_4f_LO/*.dat MG5_aMC_v2_6_5/
+cp genproductions_mg352/bin/MadGraph5_aMCatNLO/cards/examples/wplustest_4f_LO/*.dat MG5_aMC_v3_5_2/
 ~~~
 {: .source}
 
-Open `MG5_aMC_v2_6_5/wplustest_4f_LO_run_card.dat` using your favorite editor (vim, emacs,...)
+Open `MG5_aMC_v3_5_2/wplustest_4f_LO_run_card.dat` using your favorite editor (vim, emacs,...)
 and replace the following lines
 ~~~
 250 = nevents ! Number of unweighted events requested
@@ -121,15 +125,21 @@ nn23lo1    = pdlabel     ! PDF set
 {: output}
 
 ## Preparing CMSSW working area
+~~~bash
+cd ~/nobackup/cmsdas_2025_gen
+cmsrel CMSSW_12_4_8
+~~~
+{: .source}
+
+<!-- ## Preparing CMSSW working area
 We start with pulling and installing the required CMS software (CMSSW).
 We use two versions: the older 10.6.19 is used for sample generation,
 while we will make use of the more up-to-date tools installed in 12.4.7 when we analyze the samples.
 ~~~bash
 cd ~/nobackup/cmsdas_2025_gen
-cmsrel CMSSW_10_6_19
-cmsrel CMSSW_12_4_7
+cmsrel CMSSW_12_4_8
 ~~~
-{: .source}
+{: .source} -->
 
 <!-- Cloning extra scripts and config files
 ~~~bash

@@ -15,16 +15,16 @@ enddate: 2025-01-17   # machine-readable end date for the workshop in YYYY-MM-DD
 email: ["emery.nibigira@cern.ch"]
 ---
 
-<img class="plain"  src="fig/event.png" height=250>
+<img class="plain"  src="fig/event.png" height=400>
 
 ## Welcome to the CMS Data Analysis School 2025 Generators Short Exercise!
 
 This exercise introduces Monte Carlo event generators and how they are used in high energy physics,
 focusing on the workflows used in CMS.
 
-The information and exercises are based on the [2022 CMSDAS](https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideCMSDataAnalysisSchoolLPC2022GeneratorsExercise#Task_1_Using_standalone_MG5) as well as the
+<!-- The information and exercises are based on the [2022 CMSDAS](https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideCMSDataAnalysisSchoolLPC2022GeneratorsExercise#Task_1_Using_standalone_MG5) as well as the
 [Generator HATS 2021](https://twiki.cern.ch/twiki/bin/viewauth/CMS/GeneratorsHATSatLPC2021).
-It has been extended to cover new tools like [NanoGEN](https://twiki.cern.ch/twiki/bin/viewauth/CMS/NanoGen) and introduce generator-related systematic uncertainties.
+It has been extended to cover new tools like [NanoGEN](https://twiki.cern.ch/twiki/bin/viewauth/CMS/NanoGen) and introduce generator-related systematic uncertainties. -->
 
 <!-- this is an html comment -->
 

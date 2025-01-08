@@ -1,413 +1,362 @@
 ---
-title: "2 - Particle Level"
+title: "2 - Parton Shower Generator"
 teaching: 10
 exercises: 20
 questions:
 - "Why do we need to do parton showering?"
 - "How are simulated samples created in CMS?"
 objectives:
-- "Generate particle level samples in standard CMS data formats"
-- "Inspect GEN and NanoGEN files"
+- "Perform parton shower with LHE file as an input"
+- "Perform parton shower with gridpack as an input"
+- "Analyze generator level information using NanoGEN files"
 keypoints:
 - "Pythia8 is the main tool used for parton showering in CMS"
-- "Events are unphysical before running hadronization and parton showering"
-- "CMS detector simulation is the slowest part of the simulation chain, NanoGEN is a convenient shortcut to do quick physics studies"
-- "Proper determination of the qcut is important for samples with additional partons included in the matrix element"
+- "Events are not physical if it did not go through parton shower"
+- "Jet merging is a technique to avoid double countings of jet phase spaces in ME and PS calculations"
 ---
 
 # Creating particle level samples from LHE files
 
-To generate physical collision events, the LHE files we have created need to be showered.
-Parton showering accounts for non-perturbative QCD effects with phenomenological models.
-The most used tool for parton showering in CMS is Pythia 8 (P8).
-While we could again run P8 completely on our own (you can download it from the P8 website, compile and run it on your laptop if you'd like), we are going to use the CMSSW GeneratorInterface in this exercise.
-Simply stated, CMSSW can act as a wrapper around various generators and chain their outputs together.
-This makes it quite easy to run large-scale production from a gridpack to the finished (Mini/Nano)AOD file.
+As discussed earlier, LHE files itself are not enough to describe physical distributions.
+In order to generate physics-wise sensible events, LHE files need to go through the parton shower.
+Parton shower, in principle, is responsible for higher order corrections to the hard process.
+Dominant contributions of such correction happen with collinear or soft emissions.
+In CMS, one of the most widely used tool for parton shower is Pythia8 (however, do note that Pythia8 is a multipurpose generator that is able to calculate hard process for certain physics processes).
+In this exercise, instead of compiling Pythia8 and running it in standalone mode as we did for MadGraph, we will take Pythia8 that is already compiled under CMSSW environment.
 
-## The CMS sample generation chain
+## (1) Running Pythia8 interface in CMSSW
 
-For this exercise, we will use CMSSW_10_6_19 which should already be set up.
-The central executable of the [CMSSW event processing model](https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookCMSSWFramework) is `cmsRun` which is controlled through a python configuration file.
-The `cmsDriver.py` tool can be used to create configuration files based on the campaign, data tiers and a configuration fragment for the parton shower.
-
-> ## Attention
-> Note that in order for the fragments to be usable, they must be located in a CMSSW package directory structure like below and you must build your CMSSW release area after adding or changing the file.
-> Many people have spent hours trying to figure out why their config fragment either does not work at all or does not what it should because of this.
-> **Always remember the folder structure. Always remember to build.**
-> 
+> ## Make sure the Python virtual environment is deactivated
+> If you are still using the virtual environment, you need to unset it in order to not interfere with the CMSSW environment.
+> {: .source}
 {: .callout}
 
-We will start with setting up the correct folder structure, copying the configuration fragment from the [gen-cmsdas-2023 repository](https://github.com/danbarto/gen-cmsdas-2023), building using scram and copying the previously produced LHE file.
+Let's first check which release version of Pythia8 we will be using.
+
 ~~~bash
-CONFIG_PATH=${CDGPATH}/CMSSW_10_6_19/src/Configuration/GenProduction/python
-mkdir -p ${CONFIG_PATH}
-cp ${CDGPATH}/gen-cmsdas-2023/fragments/Hadronizer_TuneCP5_13TeV_generic_LHE_pythia8_cff.py ${CONFIG_PATH}/
-cd ${CDGPATH}/CMSSW_10_6_19/src/
+cd ~/nobackup/cmsdas_2025_gen/CMSSW_12_4_8/src
 cmsenv
-scram b
-cp ${CDGPATH}/MG5_aMC_v2_6_5/wplustest_4f_LO/Events/run_01/unweighted_events.lhe .
+scram tool info pythia8
 ~~~
 {: .source}
 
-Now it's time to use `cmsDriver.py` to produce a config file (called `config.py` in this example), and then run it with `cmsRun`.
-There are many options, the most important ones defining the produced data tiers (GEN and LHE), the era and conditions, as well as the file names.
-As a first step we want to just create the config file to run over 1000 events (`-n 1000`) and not immediately execute it (`--no_exec`).
-Afterwards, we run with `cmsRun config.py`.
-Some more details on the options are given on this [twiki page](https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookGenIntro).
-~~~bash
-cmsDriver.py Configuration/GenProduction/python/Hadronizer_TuneCP5_13TeV_generic_LHE_pythia8_cff.py \
-    --mc \
-    --eventcontent RAWSIM,LHE \
-    --datatier GEN,LHE \
-    --conditions 106X_upgrade2018_realistic_v4 \
-    --beamspot Realistic25ns13TeVEarly2018Collision \
-    --step GEN \
-    --geometry DB:Extended \
-    --era Run2_2018 \
-    --customise Configuration/DataProcessing/Utils.addMonitoring \
-    --filein file:unweighted_events.lhe \
-    --fileout file:GEN.root \
-    --no_exec \
-    --python_filename config.py \
-    -n 1000
-    
-cmsRun config.py
+You can find out that we are now using Pythia8.306 version that is already compiled in `CMSSW_12_4_8`.
 ~~~
-{: .source}
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Name : pythia8
+Version : 306-84a4765a9948f9c1a5e66f80618e2c6d
+++++++++++++++++++++
 
-As you can tell from the file extension the produced output file `GEN.root` is not plain text file anymore, but a root-based Event Data Model (EDM) file.
-You can get a quick look at the content by running `edmDumpEventContent GEN.root`, or opening a root browser with `rootbrowse GEN.root`.
-More information on generator data formats can be found [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideDataFormatGeneratorInterface).
-
-An alternative way to inspect the output is to run the CMSSW ParticleListDrawer module, like in the prepared `record_cfg.py` config:
-~~~bash
-cmsRun ${CDGPATH}/gen-cmsdas-2023/configs/record_cfg.py inputFiles=file:${CDGPATH}/CMSSW_10_6_19/src/GEN.root
+INCLUDE=/cvmfs/cms.cern.ch/el8_amd64_gcc10/external/pythia8/306-84a4765a9948f9c1a5e66f80618e2c6d/include
+LIB=pythia8
+LIBDIR=/cvmfs/cms.cern.ch/el8_amd64_gcc10/external/pythia8/306-84a4765a9948f9c1a5e66f80618e2c6d/lib
+PYTHIA8DATA=/cvmfs/cms.cern.ch/el8_amd64_gcc10/external/pythia8/306-84a4765a9948f9c1a5e66f80618e2c6d/share/Pythia8/xmldoc
+PYTHIA8_BASE=/cvmfs/cms.cern.ch/el8_amd64_gcc10/external/pythia8/306-84a4765a9948f9c1a5e66f80618e2c6d
+ROOT_INCLUDE_PATH=/cvmfs/cms.cern.ch/el8_amd64_gcc10/external/pythia8/306-84a4765a9948f9c1a5e66f80618e2c6d/include
+SYSTEM_INCLUDE+=1
+USE=root_cxxdefaults cxxcompiler hepmc3 hepmc lhapdf
 ~~~
-{: .source}
-What differences do you notice compared to the LHE events you have seen before?
-Can you find the final state leptons in the list?
-Tip: There are often multiple copies of each particle.
-To find out whether a particle is a final-state particle, status codes are used which are explained in the [pythia documentation](https://pythia.org/latest-manual/ParticleProperties.html).
+{: .output}
 
-Similarly, we can't plot distributions using MadAnalysis since EDM is a CMS internal data format that is not supported.
-Instead, we will use simple CMSSW modules to plot basic quantities.
-Copy the configuration input file to our configuration directory and build:
+Now we will start building our parton shower fragment in our own directories in order to produce samples by ourselves.
 
 ~~~bash
-cp $CDGPATH/gen-cmsdas-2023/configs/WjetsAnalysis_cfi.py Configuration/GenProduction/python/
-scram b
-cmsRun $CDGPATH/gen-cmsdas-2023/configs/WjetsComparisons_cfg.py inputFiles=file:GEN.root
-rootbrowse analyzed.root
+mkdir -p Configuration/GenProduction/python/
 ~~~
 {: .source}
 
-In centrally produced CMS samples going from gridpack to GEN is just a small step towards the end product, which is usually a MiniAOD or NanoAOD sample.
-The GEN samples do not contain any pileup interactions, simulation of the interaction of particles with the detector and the subsequent reconstruction.
-We can only look at the ''MC truth'', or generator information.
-To obtain reconstructed samples we need to run the detector simulation (SIM), pileup premix, HLT, reconstruction and AOD - miniAOD - nanoAOD steps.
-The SIM step is the most time intensive, where processing of every event takes about 1min.
-
-### BONUS: UL18 example for GEN --> NanoAOD steps
-
-The only process (or sample) dependent steps in the sample generation chain are the gridpack generation and the gridpack -> LHE -> GEN steps that we've covered in the above example.
-If you have a GEN file you can go all the way from GEN -> NanoAOD following the example below.
-Note: Only do this if you have completed the other tasks of this exercise as the steps can be time consuming.
-
-#### SIM step
-The SIM step for central samples was setup in `CMSSW_10_6_17_patch1`, so we're going to use the same release.
-This is the most time consuming step, running the entire CMS detector simulation with GEANT4.
-The `cmsDriver.py` command is based on [this example](https://cms-pdmv.cern.ch/mcm/public/restapi/requests/get_test/TOP-RunIISummer20UL18SIM-00119) in [McM](https://cms-pdmv.cern.ch/mcm/requests?page=0).
-
-~~~bash
-cp $CDGPATH/CMSSW_10_6_19/src/GEN.root $CDGPATH/output_gen.root
-cd $CDGPATH
-cmsrel CMSSW_10_6_17_patch1
-cd CMSSW_10_6_17_patch1/src
-cmsenv
-cmsDriver.py \
-    --python_filename sim_cfg.py \
-    --eventcontent RAWSIM \
-    --customise Configuration/DataProcessing/Utils.addMonitoring \
-    --datatier GEN-SIM \
-    --fileout file:output_sim.root \
-    --conditions 106X_upgrade2018_realistic_v11_L1v1 \
-    --beamspot Realistic25ns13TeVEarly2018Collision \
-    --step SIM \
-    --geometry DB:Extended \
-    --filein file:$CDGPATH/output_gen.root \
-    --era Run2_2018 \
-    --runUnscheduled \
-    --no_exec \
-    --mc \
-    -n 10
-
-cmsRun sim_cfg.py
-~~~
-{: .source}
-Watch out for the `-n 10` option - we will be running over just 10 events from the input file.
-You can change this to `-n -1` if you want to run over all events, but be aware that this can be **very** slow.
-
-#### Premix step
-Pileup interactions are included in this step.
-We can reuse the same CMSSW release.
-
-> ## Attention
-> This configuration queries a dataset that is used for pileup premixing.
-> You therefore need a valid grid proxy from here on.
-{: .callout}
-
-~~~bash
-cmsDriver.py \
-    --python_filename premix_cfg.py \
-    --eventcontent PREMIXRAW \
-    --customise Configuration/DataProcessing/Utils.addMonitoring \
-    --datatier GEN-SIM-DIGI \
-    --fileout file:output_premix.root \
-    --pileup_input "dbs:/Neutrino_E-10_gun/RunIISummer20ULPrePremix-UL18_106X_upgrade2018_realistic_v11_L1v1-v2/PREMIX" \
-    --conditions 106X_upgrade2018_realistic_v11_L1v1 \
-    --step DIGI,DATAMIX,L1,DIGI2RAW \
-    --procModifiers premix_stage2 \
-    --geometry DB:Extended \
-    --filein file:output_sim.root \
-    --datamix PreMix \
-    --era Run2_2018 \
-    --runUnscheduled \
-    --no_exec \
-    --mc \
-    -n 10
-
-cmsRun premix_cfg.py
-~~~
-{: .source}
-
-#### HLT step
-
-The HLT simulation is done in an earlier release, we therefore need to setup a new CMSSW release.
-This step is usually fairly fast.
-
-~~~bash
-cd $CDGPATH
-cmsrel CMSSW_10_2_16_UL
-cd CMSSW_10_2_16_UL/src
-cmsenv
-
-cmsDriver.py \
-    --python_filename hlt_cfg.py \
-    --eventcontent RAWSIM \
-    --customise Configuration/DataProcessing/Utils.addMonitoring \
-    --datatier GEN-SIM-RAW \
-    --fileout file:output_hlt.root \
-    --conditions 102X_upgrade2018_realistic_v15 \
-    --customise_commands 'process.source.bypassVersionCheck = cms.untracked.bool(True)' \
-    --step HLT:2018v32 \
-    --geometry DB:Extended \
-    --filein file:$CDGPATH/CMSSW_10_6_17_patch1/src/output_premix.root \
-    --era Run2_2018 \
-    --no_exec \
-    --mc \
-    -n 10
-    
-cmsRun hlt_cfg.py
-~~~
-{: .source}
-
-#### RECO to MiniAOD
-
-We now have all the inputs needed to run the digitization and afterwards data-like reconstruction.
-For convenience the steps producing intermediate RECO or AOD outputs are collapsed in one.
-
-~~~bash
-cd $CDGPATH
-cmsrel CMSSW_10_6_20
-cd CMSSW_10_6_20/src
-cmsenv
-
-cmsDriver.py step2 \
-    --filein file:$CDGPATH/CMSSW_10_2_16_UL/src/output_hlt.root \
-    --fileout file:miniAOD.root \
-    --eventcontent MINIAODSIM \
-    --datatier MINIAODSIM \
-    --runUnscheduled \
-    --conditions 106X_upgrade2018_realistic_v16_L1v1 \
-    --step RAW2DIGI,L1Reco,RECO,RECOSIM,PAT \
-    --procModifiers run2_miniAOD_UL \
-    --nThreads 8 \
-    --geometry DB:Extended \
-    --era Run2_2018 \
-    --python_filename maodv2_cfg.py \
-    --no_exec \
-    --mc \
-    -n 10
-    
-cmsRun maodv2_cfg.py
-~~~
-{: .source}
-
-#### MiniAOD to NanoAOD
-
-Almost there!
-
-~~~bash
-cd $CDGPATH
-cmsrel CMSSW_10_6_27
-cd CMSSW_10_6_27/src
-cmsenv
-
-cmsDriver.py step3 \
-    --mc \
-    --filein file:$CDGPATH/CMSSW_10_6_20/src/miniAOD.root \
-    --fileout file:nanoAOD.root \
-    --conditions 106X_upgrade2018_realistic_v16_L1v1 \
-    --step NANO \
-    --era Run2_2018,run2_nanoAOD_106Xv2 \
-    --eventcontent NANOAODSIM \
-    --datatier NANOAODSIM \
-    --customise_commands="process.add_(cms.Service('InitRootHandlers', EnableIMT = cms.untracked.bool(False)));process.MessageLogger.cerr.FwkReport.reportEvery=100" \
-    --nThreads 8 \
-    --python_filename nanov9_cfg.py \
-    --no_exec \
-    -n -1
-
-cmsRun nanov9_cfg.py
-~~~
-{: .source}
-
-Congrats, you have generated a CMS sample!
-You can easily open the NanoAOD root file with root and inspect the flat root TTrees.
-
-## Creating NanoAOD-like GEN samples: NanoGEN
-
-For quick studies it can be beneficial to do quick studies on MC truth level.
-To facilitate these studies one can quickly create flat root trees that are similar to NanoAOD, but only contain generator intormation, called NanoGEN.
-
-In this example we will also run the LHE step in `cmsRun`, therefore directly using a pregenerated gridpack as input.
-This implies that the fragment needs to have a `ExternalLHEProducer` block, like the one shown below.
+Create a new file `Configuration/GenProduction/python/wplustest.py`:
 ~~~python
-externalLHEProducer = cms.EDProducer("ExternalLHEProducer",
-    args = cms.vstring('/eos/uscms/store/user/cmsdas/2025/short_exercises/generators/WJetsToLNu_HT-0toInf_slc7_amd64_gcc700_CMSSW_10_6_19_tarball.tar.xz'),
+import FWCore.ParameterSet.Config as cms
+
+import os
+
+externalLHEProducer = cms.EDProducer('ExternalLHEProducer',
+    args = cms.vstring(os.getenv("HOME")+ "/nobackup/cmsdas_2025_gen/genproductions_mg352/bin/MadGraph5_aMCatNLO/wplustest_4f_LO_el8_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz"),
     nEvents = cms.untracked.uint32(5000),
     numberOfParameters = cms.uint32(1),
     outputFile = cms.string('cmsgrid_final.lhe'),
-    scriptName = cms.FileInPath('GeneratorInterface/LHEInterface/data/run_generic_tarball_cvmfs.sh')
+    scriptName = cms.FileInPath('GeneratorInterface/LHEInterface/data/run_generic_tarball_cvmfs.sh'),
+    generateConcurrently = cms.untracked.bool(False),
+)
+
+from Configuration.Generator.Pythia8CommonSettings_cfi import *
+from Configuration.Generator.MCTunesRun3ECM13p6TeV.PythiaCP5Settings_cfi import *
+
+generator = cms.EDFilter("Pythia8HadronizerFilter",
+    PythiaParameters = cms.PSet(
+        pythia8CommonSettingsBlock,
+        pythia8CP5SettingsBlock,
+        parameterSets = cms.vstring(
+            'pythia8CommonSettings',
+            'pythia8CP5Settings',
+        )
+    ),
+    comEnergy = cms.double(13600),
+    maxEventsToPrint = cms.untracked.int32(1),
+    pythiaHepMCVerbosity = cms.untracked.bool(False),
+    pythiaPylistVerbosity = cms.untracked.int32(1),
 )
 ~~~
 {: .source}
 
-In the example case we have studied so far, parton radiation was modeled exclusively by P8.
-MG5 created a matrix element prediction for production of only a W boson on its own, and P8 then took care of adding radiated jets.
-We know that MG5 works well in the perturbative (hard / large momentum) regime, and P8 in the soft (low momentum) regime.
-In order to get the best of both worlds for hard extra partons we can generate the full matrix elements not only for the W final state, but also for W + 1 jet, W + 2 jet, ..., W + N jet final states.
-In this case, we will rely on P8 only to model jet multiplicities > N (and of course model the hadronization of outgoing partons).
+Let's compile.
+~~~bash
+scram b
+~~~
+{: .source}
 
-You can copy the prepared fragment into your CMSSW release area and build with scram.
-
-The `cmsDriver.py` command for NanoGEN is very similar to the one for a EDM-based GEN configuration.
-You can then run `cmsRun NanoGEN.py`.
+`cmsDriver.py` executable makes the full configuration file based on the optional arguments it is given with (data tier, campaign, etc.) using the parton shower fragment that is built.
+We will create NanoGEN files that are flat ntuples that resembles the NanoAOD data tier but only stored with generator-level information related branches.
+It skips the SIM and RECO steps in the middle which makes it convenient to do generator-level studies.
+For more information, take a look at [link](https://twiki.cern.ch/twiki/bin/viewauth/CMS/NanoGen).
 
 ~~~bash
-cp $CDGPATH/gen-cmsdas-2023/fragments/Hadronizer_TuneCP5_13TeV_nanoGEN_pythia8_cff.py Configuration/GenProduction/python/
-cd ${CDGPATH}/CMSSW_10_6_19/src/
-cmsenv
-scram b
-cmsDriver.py Configuration/GenProduction/python/Hadronizer_TuneCP5_13TeV_nanoGEN_pythia8_cff.py \
-    --mc \
-    --eventcontent NANOAODGEN \
+cmsDriver.py Configuration/GenProduction/python/wplustest.py \
+    --python_filename config.py \
+    --eventcontent NANOAOD \
     --datatier NANOAOD \
+    --fileout file:wplustest.root \
     --conditions auto:mc \
-    --beamspot Realistic25ns13TeVEarly2018Collision \
     --step LHE,GEN,NANOGEN \
-    --geometry DB:Extended \
-    --era Run2_2018 \
-    --customise Configuration/DataProcessing/Utils.addMonitoring \
-    --fileout file:NanoGEN.root \
     --no_exec \
-    --python_filename NanoGEN.py \
-    -n 100
-    
-cmsRun NanoGEN.py
-~~~
-{: .source}
-
-
-
-While the `cmsDriver` commands are very similar, the output files are quite different.
-You can open the output file `NanoGEN.root` with root and inspect it - you'll see that the data is now arranged in flat root trees.
-
-## Determine the qcut for jet matching
-
-An intrinsic issue with generating the matrix element with extra partons is double counting.
-Naively speaking, P8 will still "attach" additional radiation to all events coming out of MG, whether they have additional partons or not.
-Therefore, events that have no additional partons in MG will end up having one or two or many jets after showering by P8.
-At the same time, we will also get 1-jet events from MG events with one additional parton.
-To remove this overlap and define more clearly the "division of labor" between the matrix element and parton shower, a matching procedure is used.
-We will be using the so called MLM matching scheme, which uses a freely-chosen scale QCUT as the boundary between ME and PS.
-After showering, jet clustering is performed and it is checked whether all jets with kT > QCUT are matched to a ME-level parton.
-If not, the event is rejected.
-
-In this exercise, we will see how to set up this method technically and validate the outcome.
-
-We have prepared an MG5 gridpack for a W+jet process, which you can find at this location:
-`/eos/uscms/store/user/cmsdas/2025/short_exercises/generators/WJetsToLNu_HT-0toInf_slc7_amd64_gcc700_CMSSW_10_6_19_tarball.tar.xz`
-
-You can look at the `proc_card.dat` and `run_card.dat` either by unpacking the gridpack, or by opening it directly with e.g. `vim /eos/uscms/store/user/cmsdas/2025/short_exercises/generators/WJetsToLNu_HT-0toInf_slc7_amd64_gcc700_CMSSW_10_6_19_tarball.tar.xz` (for non-vim users: \<ESC\>, `: q` to close).
-
-Compare the input cards to the ones we used before.
-What is different, what stayed the same? What can you learn from the log file?
-How many subprocesses are produced?
-What is the cross section?
-How does all of this compare to the previous case?
-Let's generate some events.
-Again, we are going to use cmsDriver, but now with a different fragment.
-Compare the fragment to the earlier one to see what is different now.
-Before running it, make sure that it has the correct gridpack path in it.
-
-~~~bash
-cp ${CDGPATH}/gen-cmsdas-2023/fragments/Hadronizer_TuneCP5_13TeV_MLM_5f_max2j_qCut10_LHE_pythia8_cff.py ${CONFIG_PATH}/
-cd ${CDGPATH}/CMSSW_10_6_19/src/
-cmsenv
-scram b
-
-cmsDriver.py Configuration/GenProduction/python/Hadronizer_TuneCP5_13TeV_MLM_5f_max2j_qCut10_LHE_pythia8_cff.py \
     --mc \
-    --eventcontent RAWSIM,LHE \
-    --datatier GEN,LHE \
-    --conditions 106X_mc2017_realistic_v6 \
-    --beamspot Realistic25ns13TeVEarly2017Collision \
-    --step LHE,GEN \
-    --nThreads 1 \
-    --geometry DB:Extended \
-    --era Run2_2017 \
-    --customise Configuration/DataProcessing/Utils.addMonitoring \
-    --fileout file:w2jets_qcut10.root \
-    -n 1000
+    -n 100
 ~~~
 {: .source}
 
-At the end of the run, CMSSW automatically runs the GenXSecAnalyzer, which is a simple tool to calculate the sample cross-section, check the distribution of weights and give other useful insights.
-In the case of jet matching, it also gives the matching efficiencies.
-What are the matching efficiencies for each subprocess?
-How does the cross-section after matching compare to the cross-section before matching?
-
-If you want to generate matched samples, it is important to check that the matching performs well.
-Since we have artificially split the physical process into energy regimes above and below QCUT, we need to make sure that the transition between the two regimes is smooth.
-Optimally, it should be impossible to tell from the matched sample what value of QCUT we used.
-To test this, we consider the distribution of the differential jet rates (DJRs).
-The DJRs correspond to the kt separation of the final clustering step for a given jet multiplicity.
-E.g. if we keep clustering an event until it has exaclty 2 jets left, and these 2 jets have a kt separation of 20 GeV, then DJR(1->2) = 20 GeV.
-It is called "1->2" because as we decrease the cutoff scale from >20 GeV to <20 GeV, the event turns from a 1-jet into a 2-jet event.
-In the genproductions repository, there is a macro that plots these quantities for a given EDM file:
+You just created `config.py` that can be executed with `cmsRun` command.
+Take a look at `config.py` with `less`, how it evolved from `Configuration/GenProduction/python/wplustest.py` through `cmsDriver.py`.
+It will produce LHE files, run parton shower to make GEN samples, and then finally convert it to NanoGEN format in one go by doing below.
+Note that we will only test with 100 events (`-n 100`) due to time constraints.
 
 ~~~bash
-root -l -b -q ${CDGPATH}/genproductions_mg265/bin/MadGraph5_aMCatNLO/macros/plotdjr.C\(\"w2jets_qcut10.root\",\"djr_qcut10.pdf\"\)
+cmsRun config.py
 ~~~
-{:. source}
+{: .source}
 
-Look at the resulting PDF file and check out the distributions.
-The contributions with different numbers of matrix element partons should sum up to give a smooth distribution.
-To save on computing time in this exercise, we have pre-generated samples with different values of QCUT.
-They are stored in the uscms eos area:
+LHE files are first produced using the gridpack we've just produced.
+~~~
+   ______________________________________     
+         Running Generic Tarball/Gridpack     
+   ______________________________________     
+gridpack tarball path = /uscms/home/enibigir/nobackup/cmsdas_2025_gen/genproductions_mg352/bin/MadGraph5_aMCatNLO/wplustest_4f_LO_el8_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz
+%MSG-MG5 number of events requested = 100
+%MSG-MG5 random seed used for the run = 234567
+%MSG-MG5 thread count requested = 1
+%MSG-MG5 residual/optional arguments =
+%MSG-MG5 number of events requested = 100
+%MSG-MG5 random seed used for the run = 234567
+%MSG-MG5 number of cpus = 1
+%MSG-MG5 SCRAM_ARCH version = el8_amd64_gcc10
+%MSG-MG5 CMSSW version = CMSSW_12_4_8
+Running MG5_aMC for the 1 time
+produced_lhe  0 nevt  100 submitting_event  100  remaining_event  100
+run.sh 100 2345670
+Now generating 100 events with random seed 2345670 and granularity 1
+~~~
+{: .output}
 
-`/eos/uscms//store/user/cmsdas/2023/short_exercises/Generators/wjets_2j/`
+Reweight with additional PDF sets given for possible systematic sources.
 
-What do the DJR distributions look like for the different values of QCUT?
-Which one would you choose?
+~~~
+INFO: #***************************************************************************
+#
+# original cross-section: 30775.0
+#     scale variation: +11.8% -12.7%
+#     emission scale variation: + 0% - 0%
+#     central scheme variation: +8.43e-09% -20.3%
+# PDF variation: +0.918% -0.918%
+#
+#PDF NNPDF31_nnlo_as_0118_nf_4: 30776.1 +0.916% -0.916%
+#PDF NNPDF30_nnlo_nf_4_pdfas: 29939.4 +1.81% -1.81%
+#PDF NNPDF40_nnlo_nf_4_pdfas: 31022.5 +0.554% -0.554%
+#PDF MSHT20nnlo_nf4: 30286.6 +1.2% -1.56%
+#PDF PDF4LHC21_40_pdfas_nf4: 30529 +1.53% -1.53%
+#PDF ABMP16_4_nnlo: 30385.1 +0.885% -0.885%
+# dynamical scheme # 1 : 28597.7 +13.2% -14.3% # \sum ET
+# dynamical scheme # 2 : 28599.7 +13.2% -14.3% # \sum\sqrt{m^2+pt^2}
+# dynamical scheme # 3 : 24520.5 +16.6% -17.8% # 0.5 \sum\sqrt{m^2+pt^2}
+# dynamical scheme # 4 : 30775 +11.8% -12.7% # \sqrt{\hat s}
+# PDF 42930 : 30365.485849169454
+#***************************************************************************
+~~~
+{: .output}
+
+And then Pythia8 is launched with the LHE file created given as an input.
+It first prints out the LHE information as we saw directly in the LHE file.
+
+~~~
+  --------  PYTHIA Event Listing  (hard process)  -----------------------------------------------------------------------------------
+
+    no         id  name            status     mothers   daughters     colours      p_x        p_y        p_z         e          m
+     0         90  (system)           -11     0     0     0     0     0     0      0.000      0.000      0.000  13000.000  13000.000
+     1       2212  (p+)               -12     0     0     3     0     0     0      0.000      0.000   6500.000   6500.000      0.938
+     2       2212  (p+)               -12     0     0     4     0     0     0      0.000      0.000  -6500.000   6500.000      0.938
+     3         -1  (dbar)             -21     1     0     5     0     0   501     -0.000      0.000      0.771      0.771      0.000
+     4          2  (u)                -21     2     0     5     0   501     0      0.000     -0.000  -2136.814   2136.814      0.000
+     5         24  (W+)               -22     3     4     6     7     0     0      0.000      0.000  -2136.043   2137.585     81.187
+     6        -13  mu+                 23     5     0     0     0     0     0     11.363     36.276  -1442.911   1443.412      0.106
+     7         14  nu_mu               23     5     0     0     0     0     0    -11.363    -36.276   -693.132    694.173      0.000
+                                   Charge sum:  1.000           Momentum sum:      0.000      0.000  -2136.043   2137.585     81.187
+
+ --------  End PYTHIA Event Listing  -----------------------------------------------------------------------------------------------
+~~~
+{: .output}
+
+Starts the parton shower on top of the given LHE event.
+See how much more information gets printed out.
+Remember that parton shower goes lower and lower from the hard process until certain energy threshold (`q -> q g -> q g g g -> q q q g g -> ...`).
+
+~~~
+  --------  PYTHIA Event Listing  (complete event)  ---------------------------------------------------------------------------------
+
+    no         id  name            status     mothers   daughters     colours      p_x        p_y        p_z         e          m
+     0         90  (system)           -11     0     0     0     0     0     0      0.000      0.000      0.000  13000.000  13000.000
+     1       2212  (p+)               -12     0     0    90     0     0     0      0.000      0.000   6500.000   6500.000      0.938
+     2       2212  (p+)               -12     0     0    91     0     0     0      0.000      0.000  -6500.000   6500.000      0.938
+     3         -1  (dbar)             -21     6     0     5     0     0   501     -0.000      0.000      0.771      0.771      0.000
+     4          2  (u)                -21     7     7     5     0   501     0      0.000     -0.000  -2136.814   2136.814      0.000
+     5         24  (W+)               -22     3     4     8     8     0     0      0.000      0.000  -2136.043   2137.585     81.187
+     6         21  (g)                -41    10     0     9     3   502   501      0.000      0.000      1.719      1.719      0.000
+     7          2  (u)                -42    11    11     4     4   501     0     -0.000     -0.000  -2136.814   2136.814      0.000
+     8         24  (W+)               -44     5     5    12    12     0     0    -19.744    -26.752  -1604.300   1606.697     81.187
+     9          1  (d)                -43     6     0    13    13   502     0     19.744     26.752   -530.795    531.836      0.330
+    10         -4  (cbar)             -41    18     0    14     6     0   501      0.000      0.000      2.947      2.947      0.000
+    11          2  (u)                -42    19    19     7     7   501     0      0.000      0.000  -2136.814   2136.814      0.000
+    12         24  (W+)               -44     8     8    20    20     0     0     -1.064    -19.028  -1221.827   1224.670     81.187
+    13          1  (d)                -44     9     9    17    17   502     0     27.853     30.104   -681.041    682.274      0.330
+    14         -4  (cbar)             -43    10     0    15    16     0   502    -26.789    -11.076   -231.000    232.816      1.500
+    15         -4  (cbar)             -51    14     0    22    22     0   503    -19.016     -8.750   -120.727    122.537      1.500
+    16         21  (g)                -51    14     0    23    23   503   502     -5.668     -0.052   -161.724    161.823      0.000
+    17          1  (d)                -52    13    13    21    21   502     0     25.748     27.830   -629.590    630.730      0.330
+    18         -4  (cbar)             -41    25     0    24    10     0   504      0.000      0.000      3.067      3.067      0.000
+    19          2  (u)                -42    26    26    11    11   501     0      0.000      0.000  -2136.814   2136.814      0.000
+    20         24  (W+)               -44    12    12    27    27     0     0     -0.639    -17.937  -1205.912   1208.775     81.187
+    21          1  (d)                -44    17    17    28    28   502     0     25.919     28.268   -639.604    640.753      0.330
+~~~
+{: .output}
+
+After 1 event information is printed out, 100 events get processed and finally reports the cross section.
+
+~~~
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Overall cross-section summary
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Process		xsec_before [pb]		passed	nposw	nnegw	tried	nposw	nnegw 	xsec_match [pb]			accepted [%]	 event_eff [%]
+0		3.078e+04 +/- 2.327e+02		100	100	0	100	100	0	3.078e+04 +/- 2.327e+02		100.0 +/- 0.0	100.0 +/- 0.0
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Total		3.078e+04 +/- 2.327e+02		100	100	0	100	100	0	3.078e+04 +/- 2.327e+02		100.0 +/- 0.0	100.0 +/- 0.0
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Before matching: total cross section = 3.078e+04 +- 2.327e+02 pb
+After matching: total cross section = 3.078e+04 +- 2.327e+02 pb
+Matching efficiency = 1.0 +/- 0.0   [TO BE USED IN MCM]
+Filter efficiency (taking into account weights)= (100) / (100) = 1.000e+00 +- 0.000e+00
+Filter efficiency (event-level)= (100) / (100) = 1.000e+00 +- 0.000e+00    [TO BE USED IN MCM]
+
+After filter: final cross section = 3.078e+04 +- 2.327e+02 pb
+After filter: final fraction of events with negative weights = 0.000e+00 +- 0.000e+00
+After filter: final equivalent lumi for 1M events (1/fb) = 3.249e-02 +- 2.478e-04
+
+=============================================
+~~~
+{: .output}
+
+> ## How did the cross section change after parton shower?
+> 
+> MadGraph reported `# original cross-section: 30775.0`, 30775pb.
+> After running parton shower with Pythia8, same cross section 30780pb is kept.
+> Parton shower adds more and more vertices, but why does the cross section remain unchanged?
+> 
+> > ## Solution
+> > Parton shower is unitary.
+> > Sum of probability to branch (e.g `q -> q g`) and not branch is 1.
+> > Hence, the cross sections is determined by the lowest order input (hard process).
+> > 
+> {: .solution}
+{: .challenge}
+
+> ## Bonus: How did the distribution change?
+{: .challenge}
+
+
+## (2) Jet merging samples
+
+Hard process calculation has advantage in modeling of hard jets and heavy particle decays while parton shower is great for describing collinear and soft emissions.
+For more realistic and reliable physics modeling of hard jets, for example in W+jet events, MadGraph can be used as below.
+
+~~~
+generate p p > w+, w+ > ell+ vl @0
+add process p p > w+ j, w+ > ell+ vl @1
+~~~
+{: .code}
+
+With such syntaxes, MadGraph produces W+jet process with 0 and 1 hard jet in the event.
+If this sample goes through parton shower, as some portion of events (dentoed with `@1`) readily involves hard jet, it would be better at describing W+jet process with hard jet.
+However consider the event `@0` emitting QCD particles from initial state radiation that could possibly form a jet that is hard enough.
+Such phase space inherently possesses a problem of double counting as "W+jet with hard jet" event could come from both `@0` and `@1`.
+To mitigate such issues and remove double counting of phase space contributions, jet merging technique is used.
+Jet merging is set up with an artificial cut threshold called jet merging scale.
+This scale decides whether an event will be accepted or not from both `@0` and `@1`.
+Finally, only accepted events from the two processes will be merged and form one sample.
+Very roughly, jet merging scale can be thought as the momentum of a jet.
+If a jet in the event is hard enough above the threshold, events from `@0` are rejected while only accepting from `@1`.
+On the other hand, if a jet in the event is not too hard below the threshold, events from `@0` are only accepted while rejecting `@1`.
+
+> ## How to produce gridpack
+> 
+> How to set the Madgraph (`run card`) and Pythia (`fragment`)?
+> > ## Hint
+> >
+> > ~~~
+> > #*********************************************************************
+> > # Matching - Warning! ickkw > 1 is still beta
+> > #*********************************************************************
+> >  0        = ickkw            ! 0 no matching, 1 MLM, 2 CKKW matching
+> > ~~~
+> > {: .code}
+> > This flag tells MadGraph that the LHE files we are going to produce will later be going through jet merging in > > order to avoid double countings.
+> > 
+> > ~~~
+> > #*********************************************************************
+> > # Jet measure cuts                                                   *
+> > #*********************************************************************
+> >  0   = xqcut   ! minimum kt jet measure between partons
+> > ~~~
+> > {: .code}
+> > When jet merging is turned on, `xqcut` needs to be set which presample the events for efficient jet merging.
+> > Remember that some portion of events will be later discarded and never going to be used.
+> > So there is no point of producing events that involve jets with too low energy scale at this LHE level since these will likely be removed.
+> > 
+> > ~~~python
+> > generator = cms.EDFilter("Pythia8HadronizerFilter",
+> >     PythiaParameters = cms.PSet(
+> >         pythia8CommonSettingsBlock,
+> >         pythia8CP5SettingsBlock,
+> >         processParameters = cms.vstring(
+> >             'JetMatching:setMad = off',
+> >             'JetMatching:scheme = 1',
+> >             'JetMatching:merge = on',
+> >             'JetMatching:jetAlgorithm = 2',
+> >             'JetMatching:etaJetMax = 5.',
+> >             'JetMatching:coneRadius = 1.',
+> >             'JetMatching:slowJetPower = 1',
+> >             'JetMatching:doShowerKt = off', 
+> >             'JetMatching:qCut = 19.',
+> >             'JetMatching:nQmatch = 4',
+> >             'JetMatching:nJetMax = 1',
+> >             'TimeShower:mMaxGamma = 4.0'
+> >         ),
+> >         parameterSets = cms.vstring(
+> >             'pythia8CommonSettings',
+> >             'pythia8CP5Settings',
+> >             'processParameters',
+> >         )
+> >     ),
+> > ~~~
+> > {: .code}
+> {: .solution}
+{: .challenge}
+
+> ## Bonus: What is the cross section?
+{: .challenge}
